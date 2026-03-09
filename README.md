@@ -15,6 +15,3 @@ Check it out here: **[https://apshampa.github.io/cinecode/](https://apshampa.git
 
 ## Credits
 This web tool is heavily inspired by and based on the underlying logic of the amazing original desktop application built by Melvyn Laily. 
-
-All credit for the original logic, architecture, and "MagicScaler" averaging algorithms goes to: 
-**[zerowidthjoiner.net/movie-barcode-generator](https://zerowidthjoiner.net/movie-barcode-generator)**
