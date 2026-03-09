@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Download, Settings, Image as ImageIcon, Video, RefreshCw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { UploadCloud, Download, Settings, Image as ImageIcon, Video } from 'lucide-react';
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
