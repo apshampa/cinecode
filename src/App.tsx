@@ -1,6 +1,74 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Download, Settings, Image as ImageIcon, Video } from 'lucide-react';
 
+const timeToSeconds = (timeStr: string): number => {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parts[0];
+};
+
+const rgbToHex = (r: number, g: number, b: number) => {
+  return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+};
+
+const getDominantColors = (ctx: CanvasRenderingContext2D, width: number, height: number): string[] => {
+  // Read exactly a 1 pixel line out of the vertical middle of the canvas
+  const imageData = ctx.getImageData(0, Math.floor(height / 2), width, 1).data;
+  const bucketSize = 24;
+  const colorMap = new Map<string, { r: number, g: number, b: number, count: number }>();
+
+  for (let i = 0; i < imageData.length; i += 4) {
+    const r = imageData[i];
+    const g = imageData[i + 1];
+    const b = imageData[i + 2];
+
+    // Skip pure black/white/gray logic from endcredits
+    if (r < 20 && g < 20 && b < 20) continue;
+    if (r > 240 && g > 240 && b > 240) continue;
+
+    const br = Math.round(r / bucketSize) * bucketSize;
+    const bg = Math.round(g / bucketSize) * bucketSize;
+    const bb = Math.round(b / bucketSize) * bucketSize;
+
+    const key = `${br},${bg},${bb}`;
+    if (!colorMap.has(key)) {
+      colorMap.set(key, { r: Math.min(255, br), g: Math.min(255, bg), b: Math.min(255, bb), count: 1 });
+    } else {
+      colorMap.get(key)!.count++;
+    }
+  }
+
+  const sorted = Array.from(colorMap.values()).sort((a, b) => b.count - a.count);
+  const finalColors: string[] = [];
+  const selectedRGBs: { r: number, g: number, b: number }[] = [];
+
+  const colorDistance = (c1: any, c2: any) => {
+    return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+  };
+
+  for (const c of sorted) {
+    if (finalColors.length >= 5) break; // We just need top 5 distinct colors
+
+    let tooClose = false;
+    for (const sel of selectedRGBs) {
+      if (colorDistance(c, sel) < 60) { // Distance threshold
+        tooClose = true;
+        break;
+      }
+    }
+
+    if (!tooClose) {
+      selectedRGBs.push(c);
+      finalColors.push(rgbToHex(c.r, c.g, c.b));
+    }
+  }
+
+  return finalColors;
+};
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -9,6 +77,10 @@ function App() {
   const [barcodeWidth, setBarcodeWidth] = useState(1000);
   const [barcodeHeight, setBarcodeHeight] = useState(400);
   const [smoothBars, setSmoothBars] = useState(true);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [posterMode, setPosterMode] = useState(false);
+  const [movieTitle, setMovieTitle] = useState("");
 
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -16,6 +88,7 @@ function App() {
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasResult, setHasResult] = useState(false);
+  const [palette, setPalette] = useState<string[]>([]);
 
   // Refs for elements
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,30 +113,33 @@ function App() {
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFile = e.dataTransfer.files[0];
-      handleFile(droppedFile);
+      handleFileSelect(droppedFile);
     }
   };
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      handleFileSelect(e.target.files[0]);
     }
   };
 
-  const handleFile = (selectedFile: File) => {
-    if (selectedFile.type.startsWith('video/')) {
-      setFile(selectedFile);
-      setError(null);
-      setHasResult(false);
-      setProgress(0);
-
-      // Load video src immediately for fast meta fetching
-      if (videoRef.current) {
-        const url = URL.createObjectURL(selectedFile);
-        videoRef.current.src = url;
-      }
-    } else {
+  const handleFileSelect = (selectedFile: File) => {
+    if (!selectedFile.type.startsWith('video/')) {
       setError('Please select a valid video file.');
+      return;
+    }
+    setFile(selectedFile);
+    setMovieTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); // Strip extension
+    setError(null);
+    setHasResult(false);
+    setProgress(0);
+    setStatusText('');
+    setPalette([]);
+
+    // Load video src immediately for fast meta fetching
+    if (videoRef.current) {
+      const url = URL.createObjectURL(selectedFile);
+      videoRef.current.src = url;
     }
   };
 
@@ -118,8 +194,17 @@ function App() {
       // But actually, it's better to draw it to the output canvas with 1px width directly.
       // E.g., outputCtx.drawImage(video, 0, 0, videoWidth, videoHeight, x, 0, 1, barcodeHeight);
 
+      const actualStart = startTime ? timeToSeconds(startTime) : 0;
+      const actualEnd = endTime ? timeToSeconds(endTime) : duration;
+      const actualEndClamp = Math.min(actualEnd, duration);
+      const targetDuration = actualEndClamp - actualStart;
+
+      if (targetDuration <= 0) {
+        throw new Error("Invalid time range. End time must be after start time.");
+      }
+
       const numFrames = barcodeWidth;
-      const frameInterval = duration / numFrames;
+      const frameInterval = targetDuration / numFrames;
 
       // Extract frames
       for (let i = 0; i < numFrames; i++) {
@@ -127,7 +212,7 @@ function App() {
           throw new Error("Aborted");
         }
 
-        const targetTime = i * frameInterval;
+        const targetTime = actualStart + (i * frameInterval);
 
         setStatusText(`Extracting frame ${i + 1} of ${numFrames}...`);
 
@@ -155,8 +240,10 @@ function App() {
           // Pass 1: Draw the current frame squashed into a 1-pixel high dot on the hidden canvas
           hiddenCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, i, 0, 1, 1);
 
-          // Note: We don't draw to outputCanvas yet. We have to wait for all frames 
-          // to be squashed into the hiddenCanvas 1-pixel high line first.
+          // Progressive Reveal: Stretch that exact pixel vertically into the output canvas immediately
+          outputCtx.imageSmoothingEnabled = true;
+          outputCtx.imageSmoothingQuality = "high";
+          outputCtx.drawImage(hiddenCanvas, i, 0, 1, 1, i, 0, 1, barcodeHeight);
         } else {
           // Normal mode: sample a vertical slice from the frame
           outputCtx.drawImage(
@@ -174,13 +261,9 @@ function App() {
         }
       }
 
-      if (smoothBars) {
-        // Pass 2: Stretch the completely assembled 1-pixel high image to the full height barcode
-        outputCtx.imageSmoothingEnabled = true; // Use CubicSmoother interpolation equivalent
-        outputCtx.imageSmoothingQuality = "high";
-        outputCtx.drawImage(hiddenCanvas, 0, 0, barcodeWidth, 1, 0, 0, barcodeWidth, barcodeHeight);
-      }
+      // Smooth Bars already stretch-rendered progressively in the loop!
 
+      setPalette(getDominantColors(outputCtx, barcodeWidth, barcodeHeight));
       setProgress(100);
       setStatusText('Done!');
       setHasResult(true);
@@ -216,20 +299,71 @@ function App() {
   const downloadImage = () => {
     if (!outputCanvasRef.current) return;
 
-    // Use toBlob instead of toDataURL to safely handle massive resolutions 
-    // without crashing the browser or hitting data URI limits.
-    outputCanvasRef.current.toBlob((blob) => {
-      if (!blob) return;
+    let canvasToExport = outputCanvasRef.current;
 
+    if (posterMode) {
+      const posterCanvas = document.createElement('canvas');
+      const pCtx = posterCanvas.getContext('2d');
+      if (pCtx) {
+        const paddingX = 100;
+        const paddingYTop = 100;
+        const paddingYBot = 270;
+
+        posterCanvas.width = barcodeWidth + (paddingX * 2);
+        posterCanvas.height = barcodeHeight + paddingYTop + paddingYBot;
+
+        // Background
+        pCtx.fillStyle = '#0f172a'; // match slate-900 background
+        pCtx.fillRect(0, 0, posterCanvas.width, posterCanvas.height);
+
+        // Shadow/Border for barcode
+        pCtx.shadowColor = 'rgba(0,0,0,0.8)';
+        pCtx.shadowBlur = 30;
+        pCtx.shadowOffsetY = 10;
+        pCtx.drawImage(outputCanvasRef.current, paddingX, paddingYTop);
+        pCtx.shadowColor = 'transparent'; // reset
+
+        // Color Palette Strip
+        if (palette.length > 0) {
+          const swatchWidth = barcodeWidth / palette.length;
+          const swatchHeight = 35;
+          const swatchY = paddingYTop + barcodeHeight + 20;
+
+          palette.forEach((col, i) => {
+            pCtx.fillStyle = col;
+            pCtx.fillRect(paddingX + (i * swatchWidth), swatchY, swatchWidth, swatchHeight);
+          });
+        }
+
+        // Text
+        pCtx.fillStyle = '#f8fafc'; // match slate-50 text
+        pCtx.textAlign = 'center';
+        pCtx.textBaseline = 'middle';
+
+        // Title
+        pCtx.font = 'bold 64px Outfit, sans-serif';
+        const titleY = paddingYTop + barcodeHeight + 150;
+        pCtx.fillText(movieTitle || 'CineCode', posterCanvas.width / 2, titleY);
+
+        // Subtitle
+        pCtx.font = '400 24px Outfit, sans-serif';
+        pCtx.fillStyle = '#94a3b8'; // match text-muted
+        pCtx.fillText('CINECODE COLOR TIMELINE', posterCanvas.width / 2, titleY + 55);
+
+        canvasToExport = posterCanvas;
+      }
+    }
+
+    canvasToExport.toBlob((blob) => {
+      if (!blob) {
+        setError("Failed to create image blob.");
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `${file?.name.replace(/\.[^/.]+$/, "") || "movie"}-barcode.png`;
       link.href = url;
-      document.body.appendChild(link);
+      link.download = `cinecode-${file?.name.replace(/\.[^/.]+$/, "") || 'movie'}.png`;
       link.click();
-      document.body.removeChild(link);
-
-      // Cleanup
       URL.revokeObjectURL(url);
     }, 'image/png');
   };
@@ -302,6 +436,36 @@ function App() {
               />
             </div>
 
+            <div className="control-group" style={{ marginTop: '1rem' }}>
+              <label style={{ alignItems: 'center' }}>
+                Start Time (Optional)
+                <input
+                  type="text"
+                  placeholder="e.g. 05:30"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  disabled={isProcessing}
+                  className="number-input"
+                  style={{ width: '90px' }}
+                />
+              </label>
+            </div>
+
+            <div className="control-group" style={{ marginTop: '1rem' }}>
+              <label style={{ alignItems: 'center' }}>
+                End Time (Optional)
+                <input
+                  type="text"
+                  placeholder="e.g. 1:45:00"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={isProcessing}
+                  className="number-input"
+                  style={{ width: '90px' }}
+                />
+              </label>
+            </div>
+
             <div className="toggle-group" style={{ marginTop: '1.5rem' }}>
               <label htmlFor="smooth-toggle" style={{ margin: 0, cursor: 'pointer' }}>Smooth Bars (Blur)</label>
               <label className="toggle-switch">
@@ -315,6 +479,43 @@ function App() {
                 <span className="toggle-slider"></span>
               </label>
             </div>
+
+            <div className="toggle-group" style={{ marginTop: '1.5rem' }}>
+              <label htmlFor="poster-toggle" style={{ margin: 0, cursor: 'pointer' }}>Poster Export Mode</label>
+              <label className="toggle-switch">
+                <input
+                  id="poster-toggle"
+                  type="checkbox"
+                  checked={posterMode}
+                  onChange={(e) => setPosterMode(e.target.checked)}
+                  disabled={isProcessing}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+
+            {posterMode && (
+              <div className="control-group" style={{ marginTop: '1rem' }}>
+                <label>Movie Title for Poster</label>
+                <input
+                  type="text"
+                  value={movieTitle}
+                  onChange={(e) => setMovieTitle(e.target.value)}
+                  disabled={isProcessing}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(15, 23, 42, 0.5)',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    padding: '8px 12px',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {!file ? (
@@ -395,9 +596,33 @@ function App() {
                 width: '100%',
                 height: '100%',
                 objectFit: 'contain',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                borderRadius: '8px 8px 0 0'
               }}
             />
+
+            {/* Color Palette Strip */}
+            {hasResult && palette.length > 0 && (
+              <div style={{
+                display: 'flex',
+                height: '60px',
+                width: '100%',
+                borderBottomLeftRadius: '8px',
+                borderBottomRightRadius: '8px',
+                overflow: 'hidden'
+              }}>
+                {palette.map((color, idx) => (
+                  <div
+                    key={idx}
+                    title={`Copy ${color}`}
+                    onClick={() => navigator.clipboard.writeText(color)}
+                    style={{ cursor: 'pointer', flex: 1, backgroundColor: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '0.85rem', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                  >
+                    {color}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {isProcessing && (
