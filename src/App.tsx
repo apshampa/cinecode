@@ -237,7 +237,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Movie Barcode</h1>
+        <h1>Movie CineCode</h1>
         <p>A beautiful visual timeline of your favorite film's color palette</p>
       </header>
 
@@ -250,7 +250,7 @@ function App() {
 
             <div className="control-group">
               <label>
-                Barcode Width
+                Cinecode Width
                 <span>{barcodeWidth}px</span>
               </label>
               <input
@@ -266,7 +266,7 @@ function App() {
 
             <div className="control-group" style={{ marginTop: '1rem' }}>
               <label>
-                Barcode Height
+                Cinecode Height
                 <span>{barcodeHeight}px</span>
               </label>
               <input
@@ -344,7 +344,7 @@ function App() {
                 </button>
               ) : (
                 <button className="btn-primary" onClick={generateBarcode} style={{ padding: '12px', fontSize: '1.1rem' }}>
-                  <ImageIcon size={20} /> Generate Barcode
+                  <ImageIcon size={20} /> Generate CineCode
                 </button>
               )}
               {error && <div style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
