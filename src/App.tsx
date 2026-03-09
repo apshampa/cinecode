@@ -249,9 +249,20 @@ function App() {
             </h3>
 
             <div className="control-group">
-              <label>
+              <label style={{ alignItems: 'center' }}>
                 Cinecode Width
-                <span>{barcodeWidth}px</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="number"
+                    value={barcodeWidth}
+                    onChange={(e) => setBarcodeWidth(Number(e.target.value))}
+                    disabled={isProcessing}
+                    className="number-input"
+                    min="100"
+                    max="10000"
+                  />
+                  <span style={{ fontSize: '0.85rem' }}>px</span>
+                </div>
               </label>
               <input
                 type="range"
@@ -265,9 +276,20 @@ function App() {
             </div>
 
             <div className="control-group" style={{ marginTop: '1rem' }}>
-              <label>
+              <label style={{ alignItems: 'center' }}>
                 Cinecode Height
-                <span>{barcodeHeight}px</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="number"
+                    value={barcodeHeight}
+                    onChange={(e) => setBarcodeHeight(Number(e.target.value))}
+                    disabled={isProcessing}
+                    className="number-input"
+                    min="50"
+                    max="3000"
+                  />
+                  <span style={{ fontSize: '0.85rem' }}>px</span>
+                </div>
               </label>
               <input
                 type="range"
