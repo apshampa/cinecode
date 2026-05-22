@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://apshampa.github.io/cinecode/",
+  "homepage": "https://cinecode.revanth.design/",
   "scripts": {
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
