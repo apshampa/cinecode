@@ -58,21 +58,17 @@ Error generating stack: `+ e.message + `
   const [qrOnTimeline, setQrOnTimeline] = gl.useState(!1); 
   const [qrLibLoaded, setQrLibLoaded] = gl.useState(!!window.QRCode);
   
-  // Decoder / Scanner States
+
+
   const [decodeDragActive, setDecodeDragActive] = gl.useState(!1);
   const [decodedUrl, setDecodedUrl] = gl.useState(null);
   const [decodeError, setDecodeError] = gl.useState(null);
-  const [cameraActive, setCameraActive] = gl.useState(!1);
-  const [cameraError, setCameraError] = gl.useState(null);
 
   const ql = gl.useRef(null);
   const Il = gl.useRef(null);
   const g = gl.useRef(null);
   const previewCanvasRef = gl.useRef(null);
   const A = gl.useRef(null);
-  
-  const videoScanRef = gl.useRef(null);
-  const scanIntervalRef = gl.useRef(null);
 
   // Poll for CDN scripts loading
   gl.useEffect(() => {
@@ -557,70 +553,7 @@ Error generating stack: `+ e.message + `
     img.src = URL.createObjectURL(file);
   };
 
-  // --- LIVE MOBILE CAMERA QR SCANNER LOGIC ---
-  const startCamera = async () => {
-    setDecodeError(null);
-    setDecodedUrl(null);
-    setCameraError(null);
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-      
-      if (videoScanRef.current) {
-        videoScanRef.current.srcObject = stream;
-        videoScanRef.current.setAttribute("playsinline", "true"); 
-        videoScanRef.current.play();
-        setCameraActive(!0);
-        
-        const tempCanvas = document.createElement("canvas");
-        const tempCtx = tempCanvas.getContext("2d");
-        
-        scanIntervalRef.current = setInterval(() => {
-          if (videoScanRef.current && videoScanRef.current.readyState === videoScanRef.current.HAVE_ENOUGH_DATA) {
-            tempCanvas.width = videoScanRef.current.videoWidth;
-            tempCanvas.height = videoScanRef.current.videoHeight;
-            tempCtx.drawImage(videoScanRef.current, 0, 0, tempCanvas.width, tempCanvas.height);
-            
-            const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            if (window.jsQR) {
-              const qrCode = window.jsQR(imgData.data, imgData.width, imgData.height, {
-                inversionAttempts: "dontInvert"
-              });
-              if (qrCode) {
-                setDecodedUrl(qrCode.data);
-                stopCamera();
-              }
-            }
-          }
-        }, 250);
-      }
-    } catch (err) {
-      console.error("Camera access error:", err);
-      setCameraError("Could not access camera. Please verify permissions.");
-    }
-  };
 
-  const stopCamera = () => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
-    if (videoScanRef.current && videoScanRef.current.srcObject) {
-      const stream = videoScanRef.current.srcObject;
-      const tracks = stream.getTracks();
-      tracks.forEach(track => track.stop());
-      videoScanRef.current.srcObject = null;
-    }
-    setCameraActive(!1);
-  };
-
-  gl.useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [activeTab]);
 
   return _.jsxs("div", {
     className: "app-container",
@@ -1274,62 +1207,8 @@ Error generating stack: `+ e.message + `
                 _.jsxs("div", {
                   style: { textAlign: "center" },
                   children: [
-                    _.jsx("h2", { style: { fontSize: "1.5rem", marginBottom: "0.4rem" }, children: "Scan & Decode CineCode Links" }),
-                    _.jsx("p", { style: { color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: "600px", margin: "0 auto" }, children: "Point your mobile camera at a printed or on-screen blended CineCode timeline, or upload a digital PNG file to retrieve its embedded link." })
-                  ]
-                }),
-                
-                // LIVE CAMERA SCANNER
-                _.jsxs("div", {
-                  style: {
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "1rem",
-                    background: "rgba(15, 23, 42, 0.4)",
-                    padding: "1.2rem",
-                    borderRadius: "var(--radius)",
-                    border: "1px solid var(--border)"
-                  },
-                  children: [
-                    _.jsx("h3", { style: { fontSize: "1rem", color: "var(--text)", margin: 0 }, children: "Scan Print-out or Screen with Camera" }),
-                    
-                    cameraActive ? (
-                      _.jsxs("div", {
-                        style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem", width: "100%" },
-                        children: [
-                          _.jsx("video", {
-                            ref: videoScanRef,
-                            playsInline: !0,
-                            autoPlay: !0,
-                            muted: !0,
-                            style: {
-                              width: "100%",
-                              maxWidth: "360px",
-                              aspectRatio: "4/3",
-                              borderRadius: "8px",
-                              border: "2px solid var(--primary)",
-                              background: "#000",
-                              objectFit: "cover"
-                            }
-                          }),
-                          _.jsx("button", {
-                            className: "btn-secondary",
-                            onClick: stopCamera,
-                            style: { borderColor: "#ef4444", color: "#ef4444" },
-                            children: "Stop Camera"
-                          })
-                        ]
-                      })
-                    ) : (
-                      _.jsx("button", {
-                        className: "btn-primary",
-                        onClick: startCamera,
-                        children: "Start Camera Scanner"
-                      })
-                    ),
-                    
-                    cameraError && _.jsx("div", { style: { color: "#ef4444", fontSize: "0.85rem", marginTop: "0.5rem" }, children: cameraError })
+                    _.jsx("h2", { style: { fontSize: "1.5rem", marginBottom: "0.4rem" }, children: "Decode CineCode Links" }),
+                    _.jsx("p", { style: { color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: "600px", margin: "0 auto" }, children: "Upload a digital Cinecode PNG file or screenshot to retrieve its embedded link." })
                   ]
                 }),
                 
