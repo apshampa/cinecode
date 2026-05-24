@@ -50,3 +50,29 @@ select:hover {
 .fadeIn {
   animation: fadeIn 0.3s ease-in-out forwards;
 }
+
+@media (max-width: 900px) {
+  html, body, #root {
+    height: auto !important;
+    overflow: auto !important;
+    overflow-x: hidden !important;
+  }
+  .app-container {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 1rem !important;
+  }
+  .main-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .controls-panel, .preview-container {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .glass-panel {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
