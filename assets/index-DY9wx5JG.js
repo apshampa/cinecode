@@ -925,7 +925,7 @@ Error generating stack: `+ e.message + `
                           className: "toggle-group",
                           style: { marginBottom: "0.8rem" },
                           children: [
-                            _.jsx("label", { htmlFor: "qr-toggle", style: { margin: 0, cursor: "pointer" }, children: "Aesthetic QR Code Overlay" }),
+                            _.jsx("label", { htmlFor: "qr-toggle", style: { margin: 0, cursor: "pointer" }, children: "QR Code Overlay" }),
                             _.jsxs("label", {
                               className: "toggle-switch",
                               children: [
