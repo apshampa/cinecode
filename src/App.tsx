@@ -313,12 +313,12 @@ function App() {
         posterCanvas.height = barcodeHeight + paddingYTop + paddingYBot;
 
         // Background
-        pCtx.fillStyle = '#0f172a'; // match slate-900 background
+        pCtx.fillStyle = '#fbfbf9'; // match light gallery background
         pCtx.fillRect(0, 0, posterCanvas.width, posterCanvas.height);
 
         // Shadow/Border for barcode
-        pCtx.shadowColor = 'rgba(0,0,0,0.8)';
-        pCtx.shadowBlur = 30;
+        pCtx.shadowColor = 'rgba(0,0,0,0.06)';
+        pCtx.shadowBlur = 40;
         pCtx.shadowOffsetY = 10;
         pCtx.drawImage(outputCanvasRef.current, paddingX, paddingYTop);
         pCtx.shadowColor = 'transparent'; // reset
@@ -336,18 +336,18 @@ function App() {
         }
 
         // Text
-        pCtx.fillStyle = '#f8fafc'; // match slate-50 text
+        pCtx.fillStyle = '#18181b'; // match dark text
         pCtx.textAlign = 'center';
         pCtx.textBaseline = 'middle';
 
         // Title
-        pCtx.font = 'bold 64px Outfit, sans-serif';
+        pCtx.font = "bold 64px 'Playfair Display', Georgia, serif";
         const titleY = paddingYTop + barcodeHeight + 150;
         pCtx.fillText(movieTitle || 'CineCode', posterCanvas.width / 2, titleY);
 
         // Subtitle
-        pCtx.font = '400 24px Outfit, sans-serif';
-        pCtx.fillStyle = '#94a3b8'; // match text-muted
+        pCtx.font = "400 24px 'Plus Jakarta Sans', sans-serif";
+        pCtx.fillStyle = '#71717a'; // match text-muted
         pCtx.fillText('CINECODE COLOR TIMELINE', posterCanvas.width / 2, titleY + 55);
 
         canvasToExport = posterCanvas;
