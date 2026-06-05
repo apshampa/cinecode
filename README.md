@@ -84,4 +84,4 @@ All credit for the original underlying pixel-slicing math and MagicScaler averag
 
 ## License
 
-Created by [Revanth](https://revanth.design). Visual timelines are generated from copyrighted motion pictures for educational, research, and design analysis purposes.
+Created by [Revanth](https://revanth.design).
