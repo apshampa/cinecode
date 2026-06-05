@@ -36,12 +36,7 @@ The **CineCode Web Generator** solves this by shifting 100% of the extraction an
 
 The generator’s user interface is built on a **light editorial design system** inspired by high-end museum catalogs and printed cinema journals (reminiscent of Criterion, and A24).
 
-```
-  Minimalist Typography      Ivory Matte Canvas        Functional High-Contrast
-[ Plus Jakarta / Playfair ]  [    #fbfbf9    ]  -----> [       #18181b        ]
-```
-
-- **Achromatic Controls**: Controls are designed with absolute visual neutrality. Using zero-glow panels and strict monochrome details ensures that the generator UI does not clash with, distract from, or bias the designer's perception of the movie's actual colors.
+- **Achromatic Controls**: Controls are designed with absolute visual neutrality. Using zero-glow panels and strict monochrome details ensures that the generator UI does not clash with, distract from the perception of the movie's actual colors.
 - **Ivory Background**: The canvas preview is framed against a warm, light ivory (`#fbfbf9`), presenting the generated cinecode as the focus.
 - **Touch-Optimized Sliders**: Controls feature expanded interactive hit zones (`28px` container heights and `20px` thumbs) to make dialing in fine resolutions smooth and precise on both desktop monitors and touch screens.
 
